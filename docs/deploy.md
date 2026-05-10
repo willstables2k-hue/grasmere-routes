@@ -10,15 +10,15 @@ You already have a Supabase project for the Brain. Reuse it.
 
 ## 2. Apply schema
 
-The Admin page has a "Run migrations + seed" button — click it once after
-first deploy. Locally:
+The two SQL files (`001_schema.sql`, `003_seed.sql`) are applied by:
 
 ```python
 from grasmere_routes.db import run_migrations
 run_migrations()
 ```
 
-Idempotent (`IF NOT EXISTS` / `OR REPLACE` everywhere) so safe to re-run.
+Idempotent (`IF NOT EXISTS` / `OR REPLACE` everywhere) so safe to re-run
+after every deploy.
 
 ## 3. Auth — shared team password
 
@@ -32,9 +32,8 @@ password = "your-new-password"
 
 Set `LOCAL_DEV=1` env var to bypass auth entirely in development.
 
-Per-user identity (Google OIDC + role-based access) is on the roadmap — the
-`require_role()` plumbing is preserved so re-enabling it later is a one-file
-swap. For now everyone with the password sees everything.
+Per-user identity (Google OIDC + role-based access) is parked — the app is a
+single-user strategy tool today, so a shared password is enough.
 
 ## 4. Mapbox
 
@@ -56,14 +55,6 @@ does not bust the cache. Target hit rate after first month: **>90%**.
 4. Deploy.
 
 Auto-deploys on every push to `main`.
-
-## 6. POD photo storage (next iteration)
-
-Streamlit Community Cloud disk is ephemeral, so POD photos taken via
-`st.camera_input` need to be uploaded to Cloudflare R2 (or Supabase
-Storage). Hooks are stubbed in `pages/10_Drive.py` — currently captures the
-binary and records the byte length only. Wiring the upload is a small
-follow-up.
 
 ## Monitoring
 
