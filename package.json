@@ -1,0 +1,23 @@
+{
+  "name": "grasmere-routes",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/web",
+    "start": "npm run start --workspace apps/web",
+    "test": "npm run test --workspace apps/web",
+    "db:generate": "npm run db:generate --workspace apps/web",
+    "db:migrate": "npm run db:migrate --workspace apps/web",
+    "db:push": "npm run db:push --workspace apps/web",
+    "db:studio": "npm run db:studio --workspace apps/web",
+    "optimiser:dev": "cd apps/optimiser && uv run uvicorn app.main:app --reload --port 8000",
+    "optimiser:test": "cd apps/optimiser && uv run pytest -q"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

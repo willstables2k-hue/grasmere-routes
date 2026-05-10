@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: grasmere
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: grasmere_routes
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grasmere"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  optimiser:
+    build: ./apps/optimiser
+    environment:
+      OPTIMISER_API_KEY: dev-key
+      MAPBOX_TOKEN: ${MAPBOX_TOKEN:-}
+      ALLOWED_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

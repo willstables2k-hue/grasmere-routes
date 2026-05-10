@@ -1,0 +1,1555 @@
+{
+  "id": "2bd6f7b9-ffb6-4894-9135-95251808d876",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.baseline_route_stops": {
+      "name": "baseline_route_stops",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "baseline_route_id": {
+          "name": "baseline_route_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "km_to_stop": {
+          "name": "km_to_stop",
+          "type": "numeric(8, 3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "min_to_stop": {
+          "name": "min_to_stop",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fuel_share_pence": {
+          "name": "fuel_share_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "labour_share_pence": {
+          "name": "labour_share_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "overhead_share_pence": {
+          "name": "overhead_share_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direct_cost_pence": {
+          "name": "direct_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "baseline_route_stops_route_seq_uidx": {
+          "name": "baseline_route_stops_route_seq_uidx",
+          "columns": [
+            {
+              "expression": "baseline_route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sequence",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "baseline_route_stops_baseline_route_id_baseline_routes_id_fk": {
+          "name": "baseline_route_stops_baseline_route_id_baseline_routes_id_fk",
+          "tableFrom": "baseline_route_stops",
+          "tableTo": "baseline_routes",
+          "columnsFrom": [
+            "baseline_route_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "baseline_route_stops_customer_id_customers_id_fk": {
+          "name": "baseline_route_stops_customer_id_customers_id_fk",
+          "tableFrom": "baseline_route_stops",
+          "tableTo": "customers",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.baseline_routes": {
+      "name": "baseline_routes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "snapshot_id": {
+          "name": "snapshot_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "van_colour": {
+          "name": "van_colour",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_of_week": {
+          "name": "day_of_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stop_count": {
+          "name": "stop_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "distance_km": {
+          "name": "distance_km",
+          "type": "numeric(8, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_min": {
+          "name": "duration_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fuel_cost_pence": {
+          "name": "fuel_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "labour_cost_pence": {
+          "name": "labour_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "overhead_pence": {
+          "name": "overhead_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_cost_pence": {
+          "name": "total_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_per_stop_pence": {
+          "name": "cost_per_stop_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "baseline_routes_snapshot_idx": {
+          "name": "baseline_routes_snapshot_idx",
+          "columns": [
+            {
+              "expression": "snapshot_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "baseline_routes_snapshot_id_baseline_snapshot_id_fk": {
+          "name": "baseline_routes_snapshot_id_baseline_snapshot_id_fk",
+          "tableFrom": "baseline_routes",
+          "tableTo": "baseline_snapshot",
+          "columnsFrom": [
+            "snapshot_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.baseline_snapshot": {
+      "name": "baseline_snapshot",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "computed_at": {
+          "name": "computed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "config_hash": {
+          "name": "config_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_count_included": {
+          "name": "customer_count_included",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_count_excluded": {
+          "name": "customer_count_excluded",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_distance_km": {
+          "name": "total_distance_km",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_fuel_cost_pence": {
+          "name": "total_fuel_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_labour_cost_pence": {
+          "name": "total_labour_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_overhead_pence": {
+          "name": "total_overhead_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_cost_pence": {
+          "name": "total_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_stops": {
+          "name": "total_stops",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weekly_cost_pence": {
+          "name": "weekly_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "annualised_cost_pence": {
+          "name": "annualised_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_current": {
+          "name": "is_current",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.config": {
+      "name": "config",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "smallint",
+          "primaryKey": true,
+          "notNull": true,
+          "default": 1
+        },
+        "diesel_price_pence_per_litre": {
+          "name": "diesel_price_pence_per_litre",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 188
+        },
+        "default_mpg": {
+          "name": "default_mpg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'25.00'"
+        },
+        "default_driver_hourly_rate_pence": {
+          "name": "default_driver_hourly_rate_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1600
+        },
+        "avg_speed_kmh": {
+          "name": "avg_speed_kmh",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'50.00'"
+        },
+        "service_time_min_per_stop": {
+          "name": "service_time_min_per_stop",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 8
+        },
+        "depot_loading_time_min": {
+          "name": "depot_loading_time_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 30
+        },
+        "vehicle_fixed_cost_per_day_pence": {
+          "name": "vehicle_fixed_cost_per_day_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 2500
+        },
+        "driver_max_shift_hours": {
+          "name": "driver_max_shift_hours",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'8.00'"
+        },
+        "default_gross_margin_pct": {
+          "name": "default_gross_margin_pct",
+          "type": "numeric(4, 3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0.280'"
+        },
+        "dormancy_threshold_days": {
+          "name": "dormancy_threshold_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 180
+        },
+        "working_delivery_days": {
+          "name": "working_delivery_days",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "ARRAY[1,3,4]::int[]"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_notes": {
+      "name": "customer_notes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_clerk_id": {
+          "name": "author_clerk_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "customer_notes_customer_id_customers_id_fk": {
+          "name": "customer_notes_customer_id_customers_id_fk",
+          "tableFrom": "customer_notes",
+          "tableTo": "customers",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customers": {
+      "name": "customers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "customer_code": {
+          "name": "customer_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "legal_entity_name": {
+          "name": "legal_entity_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_address": {
+          "name": "delivery_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_lat": {
+          "name": "delivery_lat",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_lng": {
+          "name": "delivery_lng",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "geocode_confidence": {
+          "name": "geocode_confidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "geocoded_at": {
+          "name": "geocoded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_address": {
+          "name": "billing_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pricing_level": {
+          "name": "pricing_level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gross_margin_pct": {
+          "name": "gross_margin_pct",
+          "type": "numeric(4, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_term_days": {
+          "name": "payment_term_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_cod": {
+          "name": "is_cod",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "delivery_days_group": {
+          "name": "delivery_days_group",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferred_days": {
+          "name": "preferred_days",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "legacy_run_code": {
+          "name": "legacy_run_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "legacy_run_position": {
+          "name": "legacy_run_position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "standing_picking_instructions": {
+          "name": "standing_picking_instructions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "standing_delivery_instructions": {
+          "name": "standing_delivery_instructions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "soft_window_start": {
+          "name": "soft_window_start",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "soft_window_end": {
+          "name": "soft_window_end",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avg_order_value_pence": {
+          "name": "avg_order_value_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_delivery_date": {
+          "name": "last_delivery_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manually_confirmed_live_at": {
+          "name": "manually_confirmed_live_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "sales_rep": {
+          "name": "sales_rep",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_csv_row": {
+          "name": "raw_csv_row",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "customers_customer_code_uidx": {
+          "name": "customers_customer_code_uidx",
+          "columns": [
+            {
+              "expression": "customer_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "customers_geocode_idx": {
+          "name": "customers_geocode_idx",
+          "columns": [
+            {
+              "expression": "delivery_lat",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "delivery_lng",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "customers_last_delivery_idx": {
+          "name": "customers_last_delivery_idx",
+          "columns": [
+            {
+              "expression": "last_delivery_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "customers_active_idx": {
+          "name": "customers_active_idx",
+          "columns": [
+            {
+              "expression": "active",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.depot": {
+      "name": "depot",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lat": {
+          "name": "lat",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lng": {
+          "name": "lng",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "opening_time": {
+          "name": "opening_time",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'06:00'"
+        },
+        "closing_time": {
+          "name": "closing_time",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'18:00'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.distance_cache": {
+      "name": "distance_cache",
+      "schema": "",
+      "columns": {
+        "origin_h3": {
+          "name": "origin_h3",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dest_h3": {
+          "name": "dest_h3",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "distance_m": {
+          "name": "distance_m",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_s": {
+          "name": "duration_s",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "distance_cache_origin_h3_dest_h3_pk": {
+          "name": "distance_cache_origin_h3_dest_h3_pk",
+          "columns": [
+            "origin_h3",
+            "dest_h3"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.drivers": {
+      "name": "drivers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "clerk_user_id": {
+          "name": "clerk_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hourly_rate_pence": {
+          "name": "hourly_rate_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "drivers_clerk_user_id_unique": {
+          "name": "drivers_clerk_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "clerk_user_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.orders": {
+      "name": "orders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "delivery_date": {
+          "name": "delivery_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weight_kg": {
+          "name": "weight_kg",
+          "type": "numeric(8, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "crate_count": {
+          "name": "crate_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "order_value_pence": {
+          "name": "order_value_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cod_amount_pence": {
+          "name": "cod_amount_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "orders_customer_date_idx": {
+          "name": "orders_customer_date_idx",
+          "columns": [
+            {
+              "expression": "customer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "delivery_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "orders_date_status_idx": {
+          "name": "orders_date_status_idx",
+          "columns": [
+            {
+              "expression": "delivery_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "orders_customer_id_customers_id_fk": {
+          "name": "orders_customer_id_customers_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "customers",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.route_stops": {
+      "name": "route_stops",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "route_id": {
+          "name": "route_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "planned_arrival": {
+          "name": "planned_arrival",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_departure": {
+          "name": "planned_departure",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_km_to_stop": {
+          "name": "planned_km_to_stop",
+          "type": "numeric(8, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_min_to_stop": {
+          "name": "planned_min_to_stop",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_fuel_share_pence": {
+          "name": "planned_fuel_share_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_labour_share_pence": {
+          "name": "planned_labour_share_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_overhead_share_pence": {
+          "name": "planned_overhead_share_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_direct_cost_pence": {
+          "name": "planned_direct_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_marginal_cost_pence": {
+          "name": "planned_marginal_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_gross_profit_pence": {
+          "name": "planned_gross_profit_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_net_contribution_pence": {
+          "name": "planned_net_contribution_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_arrival": {
+          "name": "actual_arrival",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_departure": {
+          "name": "actual_departure",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pod_photo_url": {
+          "name": "pod_photo_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pod_signature_url": {
+          "name": "pod_signature_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pod_notes": {
+          "name": "pod_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cod_collected_pence": {
+          "name": "cod_collected_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "failure_reason": {
+          "name": "failure_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "route_stops_route_seq_uidx": {
+          "name": "route_stops_route_seq_uidx",
+          "columns": [
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sequence",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "route_stops_route_id_routes_id_fk": {
+          "name": "route_stops_route_id_routes_id_fk",
+          "tableFrom": "route_stops",
+          "tableTo": "routes",
+          "columnsFrom": [
+            "route_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "route_stops_order_id_orders_id_fk": {
+          "name": "route_stops_order_id_orders_id_fk",
+          "tableFrom": "route_stops",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "route_stops_order_id_unique": {
+          "name": "route_stops_order_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "order_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.routes": {
+      "name": "routes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "delivery_date": {
+          "name": "delivery_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "driver_id": {
+          "name": "driver_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "planned_distance_km": {
+          "name": "planned_distance_km",
+          "type": "numeric(8, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_duration_min": {
+          "name": "planned_duration_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_fuel_cost_pence": {
+          "name": "planned_fuel_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_labour_cost_pence": {
+          "name": "planned_labour_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_overhead_pence": {
+          "name": "planned_overhead_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_total_cost_pence": {
+          "name": "planned_total_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_distance_km": {
+          "name": "actual_distance_km",
+          "type": "numeric(8, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_duration_min": {
+          "name": "actual_duration_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_fuel_cost_pence": {
+          "name": "actual_fuel_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_labour_cost_pence": {
+          "name": "actual_labour_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_total_cost_pence": {
+          "name": "actual_total_cost_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "optimiser_version": {
+          "name": "optimiser_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "optimiser_seed": {
+          "name": "optimiser_seed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'from_scratch'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "routes_date_idx": {
+          "name": "routes_date_idx",
+          "columns": [
+            {
+              "expression": "delivery_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "routes_driver_id_drivers_id_fk": {
+          "name": "routes_driver_id_drivers_id_fk",
+          "tableFrom": "routes",
+          "tableTo": "drivers",
+          "columnsFrom": [
+            "driver_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "routes_vehicle_id_vehicles_id_fk": {
+          "name": "routes_vehicle_id_vehicles_id_fk",
+          "tableFrom": "routes",
+          "tableTo": "vehicles",
+          "columnsFrom": [
+            "vehicle_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vehicles": {
+      "name": "vehicles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "registration": {
+          "name": "registration",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mpg": {
+          "name": "mpg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "capacity_kg": {
+          "name": "capacity_kg",
+          "type": "numeric(8, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'1200.00'"
+        },
+        "capacity_crates": {
+          "name": "capacity_crates",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 80
+        },
+        "refrigerated": {
+          "name": "refrigerated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "fixed_cost_per_day_pence": {
+          "name": "fixed_cost_per_day_pence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

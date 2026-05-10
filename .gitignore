@@ -1,0 +1,53 @@
+# deps
+node_modules
+.pnp
+.pnp.js
+
+# next
+.next/
+out/
+build
+dist
+tsconfig.tsbuildinfo
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.uv/
+*.egg-info/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# turbo
+.turbo
+
+# tests
+coverage/
+.pytest_cache/
+
+# data
+apps/web/public/uploads/
+apps/optimiser/.cache/
+data/raw/
+data/imports/
+*.sqlite
+*.db
