@@ -56,8 +56,9 @@ overhead_£    = vehicle_fixed_cost_per_day            # flat per route
 route_total_£ = fuel + labour + overhead
 ```
 
-Imperial mpg (4.546 L/gal), NOT US (3.785). Hard-coded constant in both
-`apps/web/lib/cost-model.ts` and `apps/optimiser/app/cost_model.py`.
+Imperial mpg (4.546 L/gal), NOT US (3.785). Hard-coded constant in
+`grasmere_routes/cost_model.py` — single source of truth for both the
+optimiser objective and the £ figures the UI displays.
 
 ## Marginal cost = leave-one-out
 
@@ -76,26 +77,26 @@ Surfaced prominently in `/economics`.
 
 ## Tech stack
 
-- Frontend & API: Next.js 15, TypeScript, Tailwind, shadcn/ui
-- DB: Postgres on Neon, Drizzle ORM, H3 hex cache key for distance matrix
-- Optimiser: Python 3.11 + FastAPI + Google OR-Tools on Railway
-- Maps: Mapbox GL JS + Geocoding + Matrix (driving)
-- Auth: Clerk (admin / dispatcher / driver)
-- POD: Cloudflare R2 + presigned uploads
-- Charts: Recharts
+- App: Streamlit (matches `grasmere-sales-dashboard` pattern)
+- DB: Supabase Postgres (same Brain), H3 hex cache key for distance matrix
+- Optimiser: Python 3.11 + Google OR-Tools, in-process (no microservice)
+- Maps: pydeck for routes, Mapbox Geocoding + Matrix server-side
+- Auth: Streamlit native OIDC (`st.login("google")`) + email allowlist
+- POD: Cloudflare R2 (next iteration)
+- Charts: Plotly
 
-Estimated monthly run cost: £40–60.
+Estimated monthly run cost: £0 (Streamlit Community Cloud + shared Supabase).
 
 ## Pages
 
-`/` · `/customers` · `/customers/dormant` · `/customers/[id]` · `/customers/import`
-`/plan` · `/baseline` · `/economics` · `/simulate` · `/runs` · `/drive` · `/admin`
+Landing (Overview) plus Plan, Baseline, Economics, Customers, Dormant,
+Customer Detail, Import, Simulate, Runs, Drive, Admin.
 
-## Optimiser endpoints
+## Optimiser entry points (in-process functions)
 
-- `POST /optimise` — full daily VRP, cost-minimising
-- `POST /marginal_cost` — leave-one-out for one stop
-- `POST /baseline_cost` — nearest-neighbour per (van, day) for legacy routes
+- `optimise(req)` — full daily VRP, cost-minimising
+- `marginal_cost(req)` — leave-one-out for one stop
+- `reconstruct_baseline(req)` — nearest-neighbour per (van, day) for legacy routes
 
 ## Definition of done for v1
 

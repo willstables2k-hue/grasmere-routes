@@ -1,0 +1,24 @@
+# Streamlit + UI
+streamlit>=1.41.0
+streamlit-folium>=0.23.0
+plotly>=5.24.1
+pydeck>=0.9.1
+
+# Data
+pandas>=2.2.3
+numpy>=2.0.0
+
+# Database
+sqlalchemy>=2.0.36
+psycopg[binary]>=3.2.3
+
+# Optimiser
+ortools>=9.11.4210
+h3>=4.1.0
+
+# HTTP / geocoding
+httpx>=0.27.2
+tenacity>=9.0.0
+
+# Validation
+pydantic>=2.9.0

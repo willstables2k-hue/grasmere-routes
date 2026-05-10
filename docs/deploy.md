@@ -1,79 +1,66 @@
-# Deploy
+# Deploy — Streamlit Community Cloud + Supabase
 
-Three services, one Postgres database. Total monthly run-cost ~£40–60 at our scale.
+## 1. Database — Supabase
 
-## 1. Database — Neon (Postgres)
+You already have a Supabase project for the Brain. Reuse it.
 
-1. Sign up at https://neon.tech and create a project `grasmere-routes`.
-2. Copy the **pooled** connection string (shown in the dashboard).
-3. Set as `DATABASE_URL` in:
-   - your local `.env.local`
-   - Vercel project env (web)
-   - Railway project env (optimiser, only if you persist anything there — currently no)
-4. From the repo root:
-   ```bash
-   npm run db:migrate
-   ```
-   This applies all generated migrations, the `customer_status_v` view, and seeds
-   the `config` + `depot` rows.
+1. Get the connection URL (Settings → Database → Connection string → URI).
+2. Add as `BRAIN_DB_URL` to `.streamlit/secrets.toml` locally and to the
+   Streamlit Cloud secrets editor (one-line value).
 
-PostGIS is **not** required for v1 — we store lat/lng as `double precision` and
-push spatial logic into the optimiser.
+## 2. Apply schema
 
-## 2. Optimiser — Railway
+The Admin page has a "Run migrations + seed" button — click it once after
+first deploy. Locally:
 
-1. New project → "Deploy from GitHub" → pick this repo, root `apps/optimiser`.
-2. Railway autodetects the `Dockerfile`.
-3. Env vars:
-   - `OPTIMISER_API_KEY` — random shared secret (also added to Vercel)
-   - `MAPBOX_TOKEN` — required for production-quality matrix calls
-   - `ALLOWED_ORIGINS` — your Vercel URL, e.g. `https://routes.grasmere.app`
-4. Note the public URL Railway issues (e.g. `https://grasmere-optimiser.up.railway.app`)
-   and set it as `OPTIMISER_URL` in Vercel.
+```python
+from grasmere_routes.db import run_migrations
+run_migrations()
+```
 
-## 3. Web — Vercel
+Idempotent (`IF NOT EXISTS` / `OR REPLACE` everywhere) so safe to re-run.
 
-1. Import the GitHub repo, root `apps/web`.
-2. Framework: Next.js 15 (auto-detected).
-3. Env vars (Production + Preview):
-   - `DATABASE_URL` — Neon pooled URL
-   - `OPTIMISER_URL` — Railway URL above
-   - `OPTIMISER_API_KEY` — same shared secret as Railway
-   - `MAPBOX_TOKEN` — server-side
-   - `NEXT_PUBLIC_MAPBOX_TOKEN` — public token, scoped read-only, for the GL JS map
-   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` — Clerk auth
-   - `R2_*` — Cloudflare R2 keys (POD photo uploads)
-   - `DEPOT_LAT` / `DEPOT_LNG` / `DEPOT_NAME` — Grasmere Farm, Bourne defaults are
-     fine and already match the seed.
-4. Deploy. Vercel will build `apps/web` only thanks to the workspace setup.
+## 3. Auth — Google OAuth via Streamlit native OIDC
 
-## 4. Auth — Clerk
+1. Create a Google OAuth client (https://console.cloud.google.com → APIs &
+   Services → Credentials → OAuth 2.0 Client). Set authorised redirect URI to
+   `https://YOUR-APP.streamlit.app/oauth2callback`.
+2. Generate a 32-char random `cookie_secret`.
+3. Fill in the `[auth]` block of `.streamlit/secrets.toml`.
+4. Add allowed emails to `secrets.app.allowed_emails`.
 
-1. New application at https://clerk.com.
-2. Add roles: `admin`, `dispatcher`, `driver` (Public metadata).
-3. Drop `<ClerkProvider>` into `app/layout.tsx` once keys are set
-   (the `lib/auth.ts` shim returns a fake admin until then).
+Set `LOCAL_DEV=1` env var to bypass auth in development.
 
-## 5. POD storage — Cloudflare R2
+## 4. Mapbox
 
-1. Create bucket `grasmere-routes-pod`.
-2. Create scoped API token with **Object: Read+Write** on this bucket only.
-3. The `/drive/[id]/deliver` upload uses presigned URLs minted by the web
-   server (not yet implemented — placeholder camera button only).
-
-## 6. Mapbox
-
-- **Geocoding API**: server-side calls during import.
+- **Geocoding API**: server-side calls during import (UK-bounded).
 - **Matrix API**: server-side calls from the optimiser.
-- **GL JS** (frontend): map tiles for `/baseline`, `/plan`, `/drive`.
+- Token: `MAPBOX_TOKEN` in secrets. Without it, the optimiser uses a
+  haversine fallback (good enough for dev — production needs real driving
+  distances).
 
-Cache hit-rate target: **>90% after first month**, total spend **<£20/month**.
-The H3 hex cache key (resolution 9) is the mechanism — small GPS jitter does
-not bust the cache.
+Cache: `distance_cache` table is H3-keyed at resolution 9 — small GPS jitter
+does not bust the cache. Target hit rate after first month: **>90%**.
 
-## Monitoring (post v1)
+## 5. Streamlit Community Cloud
 
-- Sentry → web + optimiser
-- Logflare or Axiom → app logs
+1. Push to `github.com/willstables2k-hue/grasmere-routes` (main).
+2. https://share.streamlit.io → New app → pick the repo → main branch →
+   entry point `streamlit_app.py`.
+3. Paste secrets via the secrets editor.
+4. Deploy.
 
-Good enough to ship; add when you start hitting unknowns.
+Auto-deploys on every push to `main`.
+
+## 6. POD photo storage (next iteration)
+
+Streamlit Community Cloud disk is ephemeral, so POD photos taken via
+`st.camera_input` need to be uploaded to Cloudflare R2 (or Supabase
+Storage). Hooks are stubbed in `pages/10_Drive.py` — currently captures the
+binary and records the byte length only. Wiring the upload is a small
+follow-up.
+
+## Monitoring
+
+Streamlit Cloud surfaces logs and crashes natively. For deeper monitoring,
+add Sentry to `streamlit_app.py` (init in the first 5 lines).
