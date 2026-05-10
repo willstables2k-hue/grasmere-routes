@@ -9,14 +9,20 @@ import streamlit as st
 from grasmere_routes.auth import require_role
 from grasmere_routes.format import fmt_gbp, fmt_km, fmt_min, fmt_pct
 from grasmere_routes.plan_service import generate_orders, optimise_plan, publish_routes
+from grasmere_routes.queries import order_count_for_date
 
 st.set_page_config(page_title="Plan · Grasmere Routes", page_icon="📅", layout="wide")
 require_role("admin", "dispatcher")
 
 st.title("Plan delivery week")
 st.caption(
-    "Pick a date, generate orders for live customers, then re-cut routes from scratch. "
-    "Dormant + no-history customers are excluded automatically."
+    "Pick a date, then either generate orders from `preferred_days` or import a "
+    "real Fresho `delivery_runs` export. Then re-cut routes from scratch."
+)
+st.page_link(
+    "pages/12_Order_Import.py",
+    label="📦 Import orders from a Fresho file",
+    use_container_width=False,
 )
 
 
@@ -41,6 +47,9 @@ with col_gen:
             f"{res['dormant_matching_hidden']} dormant hidden"
         )
 
+existing_orders = order_count_for_date(date_str)
+if existing_orders:
+    st.success(f"📦 {existing_orders} orders already in DB for {date_str}.")
 if msg := st.session_state.get("plan_orders_msg"):
     st.info(msg)
 

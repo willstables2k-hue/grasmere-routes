@@ -194,12 +194,16 @@ def list_customer_notes(cid: str) -> pd.DataFrame:
 # ---------- orders & routes ----------
 
 def orders_for_date(delivery_date: str) -> pd.DataFrame:
+    """Pending + planned orders for a delivery date. The run code we return
+    is the per-order override (from the Fresho file import) when set,
+    falling back to the customer's static legacy_run_code."""
     return query_df(
         """
         SELECT o.id AS order_id, c.id AS customer_id, c.name,
                o.weight_kg, o.crate_count, o.order_value_pence, o.status,
                c.delivery_lat AS lat, c.delivery_lng AS lng,
-               c.legacy_run_code, c.is_cod
+               COALESCE(o.legacy_run_code_override, c.legacy_run_code) AS legacy_run_code,
+               c.is_cod, o.order_number
         FROM orders o
         JOIN customers c ON c.id = o.customer_id
         WHERE o.delivery_date = :d
@@ -209,6 +213,17 @@ def orders_for_date(delivery_date: str) -> pd.DataFrame:
         """,
         {"d": delivery_date},
     )
+
+
+def order_count_for_date(delivery_date: str) -> int:
+    df = query_df(
+        """
+        SELECT COUNT(*)::int AS n FROM orders
+        WHERE delivery_date = :d AND status IN ('pending','planned','out')
+        """,
+        {"d": delivery_date},
+    )
+    return int(df.iloc[0]["n"])
 
 
 def insert_pending_order(customer_id: str, delivery_date: str) -> None:

@@ -31,3 +31,8 @@ data/raw/
 data/imports/
 *.sqlite
 *.db
+
+# real customer + £ exports — NEVER commit (use Order Import page instead)
+grasmerefarm_*.xlsx
+grasmerefarm_*.csv
+~$*.xlsx
