@@ -32,6 +32,29 @@ That's it.
 5. Pick another date in the date picker to revisit a previously imported
    day. State carries over between the two pages.
 
+## Auto-pull from Fresho
+
+Streamlit Cloud can't run a headless browser reliably, so the Fresho fetch
+lives in `scripts/fresho_pull.py` and runs **locally** on the same machine as
+the KPI dashboard pipeline (it reuses the same `FRESHO_EMAIL` /
+`FRESHO_PASSWORD` env vars and writes to the same Supabase that Streamlit
+Cloud reads from).
+
+```powershell
+# pull today
+python scripts/fresho_pull.py
+
+# pull a specific date or range
+python scripts/fresho_pull.py --date 2026-04-30
+python scripts/fresho_pull.py --from 2026-04-28 --to 2026-04-30
+
+# first-time discovery: opens Fresho headed, lists candidate delivery URLs
+python scripts/fresho_pull.py --explore
+```
+
+Idempotent — orders dedupe on Fresho `Order Number`, so a daily Task
+Scheduler entry is safe.
+
 ## Layout
 
 ```
