@@ -81,7 +81,7 @@ Surfaced prominently in `/economics`.
 - DB: Supabase Postgres (same Brain), H3 hex cache key for distance matrix
 - Optimiser: Python 3.11 + Google OR-Tools, in-process (no microservice)
 - Maps: pydeck for routes, Mapbox Geocoding + Matrix server-side
-- Auth: Streamlit native OIDC (`st.login("google")`) + email allowlist
+- Auth: shared team password (`grasmere2026` default; override via `secrets.app.password`)
 - POD: Cloudflare R2 (next iteration)
 - Charts: Plotly
 

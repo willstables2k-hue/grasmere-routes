@@ -20,16 +20,21 @@ run_migrations()
 
 Idempotent (`IF NOT EXISTS` / `OR REPLACE` everywhere) so safe to re-run.
 
-## 3. Auth — Google OAuth via Streamlit native OIDC
+## 3. Auth — shared team password
 
-1. Create a Google OAuth client (https://console.cloud.google.com → APIs &
-   Services → Credentials → OAuth 2.0 Client). Set authorised redirect URI to
-   `https://YOUR-APP.streamlit.app/oauth2callback`.
-2. Generate a 32-char random `cookie_secret`.
-3. Fill in the `[auth]` block of `.streamlit/secrets.toml`.
-4. Add allowed emails to `secrets.app.allowed_emails`.
+The app is gated behind a single shared password. Default is `grasmere2026`,
+hard-coded in `grasmere_routes/auth.py`. To rotate it, add to your secrets:
 
-Set `LOCAL_DEV=1` env var to bypass auth in development.
+```toml
+[app]
+password = "your-new-password"
+```
+
+Set `LOCAL_DEV=1` env var to bypass auth entirely in development.
+
+Per-user identity (Google OIDC + role-based access) is on the roadmap — the
+`require_role()` plumbing is preserved so re-enabling it later is a one-file
+swap. For now everyone with the password sees everything.
 
 ## 4. Mapbox
 

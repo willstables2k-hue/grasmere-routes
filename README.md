@@ -15,7 +15,7 @@ Replaces the legacy colour-coded run system and the Excel VRP solver in
 - **Maps**: pydeck for routes; Mapbox driving matrix when `MAPBOX_TOKEN` set,
   haversine fallback otherwise
 - **Geocoding**: Mapbox Geocoding API (UK-bounded)
-- **Auth**: `st.login("google")` + email allowlist in `secrets.app.allowed_emails`
+- **Auth**: shared team password (`grasmere2026` by default — override via `secrets.app.password`)
 - **Hosting**: Streamlit Community Cloud (auto-deploys on push to `main`)
 
 Cost: Streamlit Community Cloud free + Supabase shared with Brain — no extra spend.
