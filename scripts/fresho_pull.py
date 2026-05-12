@@ -138,64 +138,72 @@ def explore_links(headed: bool = True) -> None:
         print(f"\n[explore] logged in -> company_id = {company_id}")
         print(f"[explore] post-login URL (customer side): {page.url}")
 
-        # The post-login page is Fresho's customer-ordering portal. The KPI
-        # dashboard pipeline proves that /orderanalytics/companies/<id>/sales
-        # works for the supplier side, so jump there.
-        supplier_url = f"{FRESHO_URL}/orderanalytics/companies/{company_id}/sales"
-        print(f"[explore] navigating to supplier side: {supplier_url}")
-        try:
-            page.goto(supplier_url, wait_until="domcontentloaded", timeout=15000)
-            time.sleep(5)
-        except Exception as e:  # noqa: BLE001
-            print(f"[explore] supplier nav failed: {e}")
-        print(f"[explore] supplier URL landed at: {page.url}\n")
-
-        # Dump EVERY link (no keyword filter). Sort by href for stable output.
-        links = page.eval_on_selector_all(
-            "a",
-            "els => els.map(e => ({"
-            "text: (e.innerText || '').trim().slice(0, 80),"
-            "href: e.getAttribute('href') || '',"
-            "title: e.getAttribute('title') || ''"
-            "}))",
-        )
-        unique = {(L["text"], L["href"]): L for L in links if L["href"]}
-        sorted_links = sorted(unique.values(), key=lambda x: x["href"])
-        print(f"[explore] {len(sorted_links)} distinct nav links on the supplier dashboard:")
-        for L in sorted_links:
-            print(f"  text={L['text']!r}")
-            print(f"    href={L['href']}")
-            if L["title"]:
-                print(f"    title={L['title']}")
-            print()
-
-        # Also dump buttons that might be exports (no <a> required)
-        buttons = page.eval_on_selector_all(
-            "button",
-            "els => els.map(e => ({"
-            "text: (e.innerText || '').trim().slice(0, 80),"
-            "title: e.getAttribute('title') || '',"
-            "klass: e.getAttribute('class') || ''"
-            "}))",
-        )
-        export_btns = [
-            b for b in buttons
-            if any(k in (b["text"] + b["title"] + b["klass"]).lower()
-                   for k in ("export", "download", "csv", "xlsx", "deliver", "run", "dispatch"))
+        # Visit the supplier-side pages we now know exist (from the previous
+        # explore run we discovered Operations / Purchases / Sales under
+        # /orderanalytics/companies/<id>/). Dump links + screenshot for each.
+        pages_to_crawl = [
+            ("sales", f"{FRESHO_URL}/orderanalytics/companies/{company_id}/sales"),
+            ("operations", f"{FRESHO_URL}/orderanalytics/companies/{company_id}/operations"),
+            ("purchases", f"{FRESHO_URL}/orderanalytics/companies/{company_id}/purchases"),
+            ("supplier_sell", f"{FRESHO_URL}/supplier/dashboard?company_id={company_id}&mode=sell"),
         ]
-        if export_btns:
-            print(f"[explore] {len(export_btns)} export-looking buttons:")
-            for B in export_btns:
-                print(f"  text={B['text']!r}  class={B['klass']!r}  title={B['title']!r}")
-            print()
 
-        screenshot = ROOT / "scripts" / "fresho_explore_screenshot.png"
-        page.screenshot(path=str(screenshot), full_page=True)
-        print(f"[explore] screenshot saved at {screenshot}")
+        for label, url in pages_to_crawl:
+            print(f"\n[explore] === {label} ===")
+            print(f"[explore] navigating: {url}")
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                time.sleep(5)
+            except Exception as e:  # noqa: BLE001
+                print(f"[explore] nav failed: {e}")
+                continue
+            print(f"[explore] landed at: {page.url}")
+
+            links = page.eval_on_selector_all(
+                "a",
+                "els => els.map(e => ({"
+                "text: (e.innerText || '').trim().slice(0, 80),"
+                "href: e.getAttribute('href') || '',"
+                "title: e.getAttribute('title') || ''"
+                "}))",
+            )
+            unique = {(L["text"], L["href"]): L for L in links if L["href"]}
+            sorted_links = sorted(unique.values(), key=lambda x: x["href"])
+            print(f"[explore] {len(sorted_links)} distinct links on {label}:")
+            for L in sorted_links:
+                t = L["text"][:50]
+                h = L["href"]
+                title_suffix = f"  title={L['title']!r}" if L["title"] else ""
+                print(f"  text={t!r:<54}  href={h}{title_suffix}")
+
+            buttons = page.eval_on_selector_all(
+                "button",
+                "els => els.map(e => ({"
+                "text: (e.innerText || '').trim().slice(0, 80),"
+                "title: e.getAttribute('title') || '',"
+                "klass: e.getAttribute('class') || ''"
+                "}))",
+            )
+            export_btns = [
+                b for b in buttons
+                if any(k in (b["text"] + b["title"] + b["klass"]).lower()
+                       for k in ("export", "download", "csv", "xlsx", "deliver", "run", "dispatch"))
+            ]
+            if export_btns:
+                print(f"[explore] {len(export_btns)} export-looking buttons on {label}:")
+                for B in export_btns:
+                    print(f"  text={B['text']!r}  class={B['klass']!r}  title={B['title']!r}")
+
+            shot = ROOT / "scripts" / f"fresho_explore_{label}.png"
+            try:
+                page.screenshot(path=str(shot), full_page=True)
+                print(f"[explore] screenshot: {shot}")
+            except Exception as e:  # noqa: BLE001
+                print(f"[explore] screenshot failed: {e}")
+
         print()
         print("[explore] Browser stays open for 10 minutes.")
-        print("[explore] Navigate to wherever you normally export the delivery_runs")
-        print("[explore] file. Note the URL in the address bar and the export button.")
+        print("[explore] If you spot the delivery_runs export above, paste the URL.")
         try:
             time.sleep(600)
         except KeyboardInterrupt:

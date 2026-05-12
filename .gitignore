@@ -38,6 +38,6 @@ grasmerefarm_*.csv
 ~$*.xlsx
 
 # debug artifacts from fresho_pull --explore
-scripts/fresho_explore_screenshot.png
+scripts/fresho_explore_*.png
 scripts/failed_*.png
 scripts/logs/
