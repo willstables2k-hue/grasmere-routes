@@ -55,6 +55,13 @@ if str(ROOT) not in sys.path:
 from grasmere_routes.orders_import import import_orders, parse_orders_excel  # noqa: E402
 
 FRESHO_URL = "https://app.fresho.com"
+
+# Force unbuffered stdout so progress shows immediately when running
+# from a scheduled task or `run_in_background` Bash call.
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+except Exception:
+    pass
 DEFAULT_DELIVERY_URL_TEMPLATE = (
     # Best-guess based on Fresho's order-management URL conventions; override
     # via FRESHO_DELIVERY_URL_TEMPLATE once you confirm the real pattern.
