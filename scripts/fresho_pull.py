@@ -311,11 +311,20 @@ def pull_one_day(target_date: date, headed: bool = False) -> dict:
             page.fill('#delivery_date', iso)
             page.select_option('select[name="format"]', 'CSV')
 
-            # Single Export button on this page (class .btn-primary)
+            # Single Export button on this page (class .btn-primary).
+            # Clicking it opens a "Delivery runs report" modal that shows
+            # "Generating report" then "Done." plus a clickable filename
+            # link. The download fires only when that link is clicked.
             print("[pull] clicking Export...")
             try:
-                with page.expect_download(timeout=90000) as dl:
-                    page.click('button.btn-primary:has-text("Export")', timeout=10000)
+                page.click('button.btn-primary:has-text("Export")', timeout=10000)
+                print("[pull] waiting for report to generate...")
+                # The filename link contains 'delivery_runs' — wait for it.
+                link = page.locator('a:has-text("delivery_runs")').first
+                link.wait_for(state="visible", timeout=120000)
+                print("[pull] clicking download link...")
+                with page.expect_download(timeout=30000) as dl:
+                    link.click()
                 download = dl.value
                 fname = download.suggested_filename
                 out = tmp_dir / fname
