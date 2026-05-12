@@ -314,14 +314,49 @@ def pull_one_day(target_date: date, headed: bool = False) -> dict:
             # Single Export button on this page (class .btn-primary).
             # Clicking it opens a "Delivery runs report" modal that shows
             # "Generating report" then "Done." plus a clickable filename
-            # link. The download fires only when that link is clicked.
+            # link/button. The download fires only when that link is clicked.
             print("[pull] clicking Export...")
             try:
                 page.click('button.btn-primary:has-text("Export")', timeout=10000)
-                print("[pull] waiting for report to generate...")
-                # The filename link contains 'delivery_runs' — wait for it.
-                link = page.locator('a:has-text("delivery_runs")').first
-                link.wait_for(state="visible", timeout=120000)
+                print("[pull] waiting for report to generate (Done.)...")
+                # First wait for the "Done." status — proves the report finished
+                page.wait_for_selector('text=Done.', timeout=180000)
+                print("[pull] report ready, locating download link...")
+                # Try several selector strategies — the link wrapping varies
+                candidates = [
+                    'a:has-text("delivery_runs")',
+                    'a[href*="delivery_runs"]',
+                    'a[download]',
+                    '[role="link"]:has-text("delivery_runs")',
+                    'button:has-text("delivery_runs")',
+                    'a:has-text(".csv")',
+                ]
+                link = None
+                for sel in candidates:
+                    try:
+                        loc = page.locator(sel).first
+                        loc.wait_for(state="visible", timeout=2000)
+                        link = loc
+                        print(f"[pull] matched selector: {sel}")
+                        break
+                    except Exception:
+                        continue
+                if link is None:
+                    # Diagnostic dump
+                    diag = page.eval_on_selector_all(
+                        'a, button, [role="link"], [role="button"], div',
+                        "els => els.map(e => ({"
+                        "tag: e.tagName, "
+                        "text: (e.innerText||'').trim().slice(0,80), "
+                        "href: e.getAttribute('href')||'', "
+                        "klass: (e.getAttribute('class')||'').slice(0,50), "
+                        "download: e.hasAttribute('download')"
+                        "})).filter(x => x.text.includes('delivery_runs') || x.text.includes('.csv') || x.href.includes('delivery_runs'))",
+                    )
+                    print("[pull] elements containing 'delivery_runs' or '.csv':")
+                    for d in diag[:20]:
+                        print(f"  {d}")
+                    raise RuntimeError("download link not found in modal")
                 print("[pull] clicking download link...")
                 with page.expect_download(timeout=30000) as dl:
                     link.click()
