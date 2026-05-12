@@ -111,8 +111,11 @@ def _coerce_date(v) -> date | None:
         return v.date()
     if isinstance(v, date):
         return v
+    # Fresho exports use UK-style DD/MM/YYYY — be explicit so pandas doesn't
+    # warn about ambiguity (and doesn't silently mis-parse 04/05 as April 5
+    # instead of May 4).
     try:
-        return pd.to_datetime(v).date()
+        return pd.to_datetime(v, dayfirst=True).date()
     except Exception:  # noqa: BLE001
         return None
 
