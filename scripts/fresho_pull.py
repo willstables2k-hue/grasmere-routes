@@ -318,55 +318,33 @@ def pull_one_day(target_date: date, headed: bool = False) -> dict:
             print("[pull] clicking Export...")
             try:
                 page.click('button.btn-primary:has-text("Export")', timeout=10000)
-                print("[pull] polling for filename link in modal (up to 5 min)...")
+                print("[pull] waiting 30s for modal to render + report to finish...")
+                time.sleep(30)
 
-                # Modal is a Bootstrap dialog (div[role=dialog]) in the main
-                # frame. Its filename link is rendered after Fresho's server
-                # finishes generating the report. Poll for an anchor whose
-                # text matches the file pattern (with date) — that's unique
-                # and won't false-match the page-level "Manage" link.
-                iso_for_match = target_date.isoformat()
-                target_hit = None
-                for attempt in range(60):
-                    time.sleep(5)
-                    try:
-                        diag = page.eval_on_selector_all(
-                            'div[role="dialog"] a, .modal a, a',
-                            "els => els.map(e => ({"
-                            "tag: e.tagName, "
-                            "text: (e.innerText||'').trim().slice(0,120), "
-                            "href: e.getAttribute('href')||'', "
-                            "klass: (e.getAttribute('class')||'').slice(0,80), "
-                            "id: e.id||'', "
-                            "download: e.hasAttribute('download')"
-                            "}))",
-                        )
-                    except Exception:
-                        continue
-                    # Match by TEXT containing the date string — that's only
-                    # in the modal's filename link, never in nav/sidebar links.
-                    hits = [d for d in diag if iso_for_match in (d["text"] or "")]
-                    if hits:
-                        target_hit = hits[0]
-                        print(f"[pull] modal link appeared after ~{(attempt+1)*5}s")
-                        print(f"  {target_hit}")
-                        break
+                # Dump the modal's HTML directly so we can see exactly how the
+                # download link is structured.
+                try:
+                    modal_html = page.locator('div[role="dialog"]').first.inner_html()
+                    print(f"[pull] modal HTML length: {len(modal_html)}")
+                    print(f"[pull] modal HTML (first 2500 chars):")
+                    print(modal_html[:2500])
+                    print("[pull] --- end modal HTML ---")
+                except Exception as e:  # noqa: BLE001
+                    print(f"[pull] couldn't read modal HTML: {e}")
+                    modal_html = ""
 
-                if not target_hit:
-                    raise RuntimeError(
-                        f"modal filename link (containing {iso_for_match}) never appeared"
-                    )
-
-                # Build a robust locator for the hit element
-                if target_hit["href"]:
-                    locator = page.locator(f'a[href="{target_hit["href"]}"]').first
+                # Look for the .csv link by href pattern, falling back to text
+                import re as _re
+                href_match = _re.search(r'href="([^"]*delivery_runs[^"]*\.csv[^"]*)"', modal_html)
+                if href_match:
+                    csv_href = href_match.group(1).replace("&amp;", "&")
+                    print(f"[pull] found href: {csv_href}")
+                    print("[pull] clicking link by href...")
+                    with page.expect_download(timeout=60000) as dl:
+                        page.locator(f'a[href="{csv_href}"]').first.click(timeout=10000)
                 else:
-                    locator = page.locator('div[role="dialog"] a').filter(
-                        has_text=iso_for_match
-                    ).first
-                print("[pull] clicking modal link...")
-                with page.expect_download(timeout=60000) as dl:
-                    locator.click(timeout=10000)
+                    raise RuntimeError("No href matching *delivery_runs*.csv in modal HTML")
+
                 download = dl.value
                 fname = download.suggested_filename
                 out = tmp_dir / fname
