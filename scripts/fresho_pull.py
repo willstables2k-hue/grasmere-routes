@@ -106,11 +106,16 @@ def _login_and_get_company(page, email: str, password: str) -> str:
 
 
 def explore_links(headed: bool = True) -> None:
-    """Open Fresho and list every link whose text/href hints at the delivery
-    export. Prints them to stdout so we can pick the right URL pattern."""
+    """Open Fresho, jump to the supplier-side dashboard (the KPI dashboard
+    proves this URL exists), dump every nav link, screenshot it, and keep
+    the browser open for manual inspection.
+
+    All print statements stay ASCII-safe so Windows code-page 1252 doesn't
+    crash mid-output.
+    """
     from playwright.sync_api import sync_playwright
 
-    email = os.environ["FRESHO_EMAIL"]
+    email = os.environ.get("FRESHO_EMAIL") or "will@grasmere-farm.co.uk"
     password = os.environ["FRESHO_PASSWORD"]
 
     with sync_playwright() as p:
@@ -123,10 +128,22 @@ def explore_links(headed: bool = True) -> None:
         ).new_page()
 
         company_id = _login_and_get_company(page, email, password)
-        print(f"\n[explore] logged in · company_id = {company_id}")
-        print(f"[explore] post-login URL: {page.url}\n")
+        print(f"\n[explore] logged in -> company_id = {company_id}")
+        print(f"[explore] post-login URL (customer side): {page.url}")
 
-        keywords = ["deliver", "run", "dispatch", "manifest", "pickup", "route"]
+        # The post-login page is Fresho's customer-ordering portal. The KPI
+        # dashboard pipeline proves that /orderanalytics/companies/<id>/sales
+        # works for the supplier side, so jump there.
+        supplier_url = f"{FRESHO_URL}/orderanalytics/companies/{company_id}/sales"
+        print(f"[explore] navigating to supplier side: {supplier_url}")
+        try:
+            page.goto(supplier_url, wait_until="domcontentloaded", timeout=15000)
+            time.sleep(5)
+        except Exception as e:  # noqa: BLE001
+            print(f"[explore] supplier nav failed: {e}")
+        print(f"[explore] supplier URL landed at: {page.url}\n")
+
+        # Dump EVERY link (no keyword filter). Sort by href for stable output.
         links = page.eval_on_selector_all(
             "a",
             "els => els.map(e => ({"
@@ -135,34 +152,45 @@ def explore_links(headed: bool = True) -> None:
             "title: e.getAttribute('title') || ''"
             "}))",
         )
-        hits = []
-        for L in links:
-            blob = (L["text"] + " " + L["href"] + " " + L["title"]).lower()
-            if any(k in blob for k in keywords):
-                hits.append(L)
-
-        print(f"[explore] {len(hits)} candidate links (text/href/title):")
-        for L in hits:
+        unique = {(L["text"], L["href"]): L for L in links if L["href"]}
+        sorted_links = sorted(unique.values(), key=lambda x: x["href"])
+        print(f"[explore] {len(sorted_links)} distinct nav links on the supplier dashboard:")
+        for L in sorted_links:
             print(f"  text={L['text']!r}")
             print(f"    href={L['href']}")
             if L["title"]:
                 print(f"    title={L['title']}")
             print()
 
-        # Take a screenshot of the post-login page for context
+        # Also dump buttons that might be exports (no <a> required)
+        buttons = page.eval_on_selector_all(
+            "button",
+            "els => els.map(e => ({"
+            "text: (e.innerText || '').trim().slice(0, 80),"
+            "title: e.getAttribute('title') || '',"
+            "klass: e.getAttribute('class') || ''"
+            "}))",
+        )
+        export_btns = [
+            b for b in buttons
+            if any(k in (b["text"] + b["title"] + b["klass"]).lower()
+                   for k in ("export", "download", "csv", "xlsx", "deliver", "run", "dispatch"))
+        ]
+        if export_btns:
+            print(f"[explore] {len(export_btns)} export-looking buttons:")
+            for B in export_btns:
+                print(f"  text={B['text']!r}  class={B['klass']!r}  title={B['title']!r}")
+            print()
+
         screenshot = ROOT / "scripts" / "fresho_explore_screenshot.png"
         page.screenshot(path=str(screenshot), full_page=True)
-        print(f"[explore] screenshot saved → {screenshot}")
-        print(
-            "\n[explore] Identify the right link, then either:\n"
-            "  1. Click it manually in this window, copy the URL, and set\n"
-            "     FRESHO_DELIVERY_URL_TEMPLATE in your environment, e.g.:\n"
-            "       export FRESHO_DELIVERY_URL_TEMPLATE='/order-management/companies/{company_id}/runs?date={date}'\n"
-            "  2. Send me the URL pattern and I'll wire it in.\n"
-        )
-        print("Press Ctrl+C to close the browser when done.")
+        print(f"[explore] screenshot saved at {screenshot}")
+        print()
+        print("[explore] Browser stays open for 10 minutes.")
+        print("[explore] Navigate to wherever you normally export the delivery_runs")
+        print("[explore] file. Note the URL in the address bar and the export button.")
         try:
-            time.sleep(600)  # keep the browser open for inspection
+            time.sleep(600)
         except KeyboardInterrupt:
             pass
         browser.close()
@@ -202,7 +230,7 @@ def pull_one_day(target_date: date, headed: bool = False) -> dict:
     parse, push to Supabase via import_orders. Returns the import summary."""
     from playwright.sync_api import sync_playwright
 
-    email = os.environ["FRESHO_EMAIL"]
+    email = os.environ.get("FRESHO_EMAIL") or "will@grasmere-farm.co.uk"
     password = os.environ["FRESHO_PASSWORD"]
     template = os.environ.get(
         "FRESHO_DELIVERY_URL_TEMPLATE", DEFAULT_DELIVERY_URL_TEMPLATE
@@ -284,17 +312,20 @@ def main() -> int:
     parser.add_argument("--headed", action="store_true", help="Show the browser window")
     args = parser.parse_args()
 
-    for required in ("FRESHO_EMAIL", "FRESHO_PASSWORD"):
-        if not os.environ.get(required):
-            print(f"[error] {required} not set", file=sys.stderr)
-            return 2
+    if not os.environ.get("FRESHO_PASSWORD"):
+        print("[error] FRESHO_PASSWORD not set", file=sys.stderr)
+        return 2
+    # FRESHO_EMAIL is optional — defaults to will@grasmere-farm.co.uk to match
+    # the KPI dashboard pipeline's hard-coded login.
+
+    if args.explore:
+        # --explore doesn't touch the DB, so no BRAIN_DB_URL needed
+        explore_links(headed=True)
+        return 0
+
     if not os.environ.get("BRAIN_DB_URL"):
         print("[error] BRAIN_DB_URL not set (target Supabase connection)", file=sys.stderr)
         return 2
-
-    if args.explore:
-        explore_links(headed=True)
-        return 0
 
     if args.from_ and args.to_:
         start = datetime.strptime(args.from_, "%Y-%m-%d").date()
