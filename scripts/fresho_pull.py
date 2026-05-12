@@ -318,48 +318,65 @@ def pull_one_day(target_date: date, headed: bool = False) -> dict:
             print("[pull] clicking Export...")
             try:
                 page.click('button.btn-primary:has-text("Export")', timeout=10000)
-                print("[pull] waiting for report to generate (Done.)...")
-                # First wait for the "Done." status — proves the report finished
-                page.wait_for_selector('text=Done.', timeout=180000)
-                print("[pull] report ready, locating download link...")
-                # Try several selector strategies — the link wrapping varies
-                candidates = [
-                    'a:has-text("delivery_runs")',
-                    'a[href*="delivery_runs"]',
-                    'a[download]',
-                    '[role="link"]:has-text("delivery_runs")',
-                    'button:has-text("delivery_runs")',
-                    'a:has-text(".csv")',
-                ]
-                link = None
-                for sel in candidates:
+                print("[pull] giving the modal time to render + report time to generate...")
+                # Don't wait for a specific selector — the modal text might be
+                # in an iframe (Fresho uses Ember/iframe-based modals). Wait
+                # a fixed time, then scan ALL frames for the download link.
+                time.sleep(20)
+
+                # Search every frame for an element with 'delivery_runs' in its text or href
+                target = None
+                for f_idx, f in enumerate(page.frames):
                     try:
-                        loc = page.locator(sel).first
-                        loc.wait_for(state="visible", timeout=2000)
-                        link = loc
-                        print(f"[pull] matched selector: {sel}")
-                        break
-                    except Exception:
-                        continue
-                if link is None:
-                    # Diagnostic dump
-                    diag = page.eval_on_selector_all(
-                        'a, button, [role="link"], [role="button"], div',
-                        "els => els.map(e => ({"
-                        "tag: e.tagName, "
-                        "text: (e.innerText||'').trim().slice(0,80), "
-                        "href: e.getAttribute('href')||'', "
-                        "klass: (e.getAttribute('class')||'').slice(0,50), "
-                        "download: e.hasAttribute('download')"
-                        "})).filter(x => x.text.includes('delivery_runs') || x.text.includes('.csv') || x.href.includes('delivery_runs'))",
-                    )
-                    print("[pull] elements containing 'delivery_runs' or '.csv':")
-                    for d in diag[:20]:
-                        print(f"  {d}")
-                    raise RuntimeError("download link not found in modal")
-                print("[pull] clicking download link...")
+                        diag = f.eval_on_selector_all(
+                            "a, button, [role='link'], [role='button']",
+                            "els => els.map(e => ({"
+                            "tag: e.tagName, "
+                            "text: (e.innerText||'').trim().slice(0,120), "
+                            "href: e.getAttribute('href')||'', "
+                            "klass: (e.getAttribute('class')||'').slice(0,80), "
+                            "id: e.id||'', "
+                            "download: e.hasAttribute('download')"
+                            "}))",
+                        )
+                        hits = [
+                            d for d in diag
+                            if "delivery_runs" in (d["text"] or "") or "delivery_runs" in (d["href"] or "")
+                        ]
+                        if hits:
+                            print(f"[pull] found in frame[{f_idx}] url={f.url}:")
+                            for h in hits[:5]:
+                                print(f"    {h}")
+                            target = (f, hits[0])
+                            break
+                    except Exception as e:  # noqa: BLE001
+                        print(f"[pull] frame[{f_idx}] scan err: {e}")
+
+                if not target:
+                    # Last-ditch debug: dump first 2000 chars of each frame's content
+                    print("[pull] DOWNLOAD ELEMENT NOT FOUND. Frame dump:")
+                    for f_idx, f in enumerate(page.frames):
+                        try:
+                            html = f.content()
+                            idx = html.find("delivery_runs")
+                            if idx >= 0:
+                                print(f"  frame[{f_idx}] url={f.url}")
+                                print(f"  context: {html[max(0,idx-200):idx+300]!r}")
+                        except Exception:
+                            pass
+                    raise RuntimeError("download link not located in any frame")
+
+                frame, hit = target
+                print(f"[pull] clicking element: tag={hit['tag']} text={hit['text']!r}")
+                # Build a robust frame-scoped locator
+                if hit["href"]:
+                    sel = f'a[href="{hit["href"]}"]'
+                elif hit["id"]:
+                    sel = f'#{hit["id"]}'
+                else:
+                    sel = f'{hit["tag"].lower()}:has-text("delivery_runs")'
                 with page.expect_download(timeout=30000) as dl:
-                    link.click()
+                    frame.click(sel, timeout=10000)
                 download = dl.value
                 fname = download.suggested_filename
                 out = tmp_dir / fname
