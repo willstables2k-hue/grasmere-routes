@@ -28,8 +28,8 @@ def _to_sqlalchemy_url(raw: str) -> str:
     return raw
 
 
-def _resolve_url() -> str:
-    # Try Streamlit secrets first (only available when running under Streamlit)
+def _resolve_url_or_none() -> str | None:
+    """Return the resolved SQLAlchemy URL, or None if no DB has been configured."""
     try:
         import streamlit as st  # type: ignore
 
@@ -39,15 +39,24 @@ def _resolve_url() -> str:
         pass
     raw = os.environ.get("BRAIN_DB_URL") or os.environ.get("DATABASE_URL")
     if not raw:
-        raise RuntimeError(
-            "BRAIN_DB_URL not set — add it to .streamlit/secrets.toml or env"
-        )
+        return None
     return _to_sqlalchemy_url(raw)
+
+
+def is_db_configured() -> bool:
+    """Cheap pre-flight check used by pages to render a friendly screen
+    instead of crashing when secrets are missing."""
+    return _resolve_url_or_none() is not None
 
 
 @lru_cache(maxsize=1)
 def engine() -> Engine:
-    return create_engine(_resolve_url(), pool_pre_ping=True, future=True)
+    url = _resolve_url_or_none()
+    if url is None:
+        raise RuntimeError(
+            "BRAIN_DB_URL not set — add it to .streamlit/secrets.toml or env"
+        )
+    return create_engine(url, pool_pre_ping=True, future=True)
 
 
 def query_df(sql: str, params: dict | None = None) -> pd.DataFrame:

@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from grasmere_routes.auth import require_user
+from grasmere_routes.bootstrap import require_database
 from grasmere_routes.day_service import DayResult, load_or_compute_day
 from grasmere_routes.format import fmt_gbp, fmt_gbp_rounded, fmt_km, fmt_min, fmt_pct
 from grasmere_routes.queries import dates_with_data
@@ -18,6 +19,7 @@ st.set_page_config(
     layout="wide",
 )
 require_user()
+require_database()
 
 
 @st.cache_data(ttl=600, show_spinner=False)

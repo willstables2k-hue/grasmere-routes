@@ -20,6 +20,9 @@ st.set_page_config(
     layout="centered",
 )
 require_user()
+# Note: this page is informational only (instructions + deep link), so it
+# deliberately doesn't gate on require_database() — the user might land here
+# precisely BECAUSE the DB has no data yet.
 
 st.title("Pull from Fresho")
 

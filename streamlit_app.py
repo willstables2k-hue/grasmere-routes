@@ -13,6 +13,7 @@ import pydeck as pdk
 import streamlit as st
 
 from grasmere_routes.auth import require_user
+from grasmere_routes.bootstrap import require_database
 from grasmere_routes.day_service import (
     DayResult,
     import_file_and_compute,
@@ -41,6 +42,7 @@ st.set_page_config(
 )
 
 require_user()
+require_database()
 
 
 # ---- cached day loader so flicking between Map and Costs doesn't re-solve ----
