@@ -54,6 +54,18 @@ if str(ROOT) not in sys.path:
 
 from grasmere_routes.orders_import import import_orders, parse_orders_excel  # noqa: E402
 
+
+def _parse_orders_csv(payload: bytes):
+    """Adapter: Fresho's 'CSV' format option emits a comma-separated file
+    with the same columns as the XLSX. Convert it to a DataFrame that the
+    same parser code path expects."""
+    import io as _io
+    import pandas as _pd
+    df = _pd.read_csv(_io.BytesIO(payload))
+    buf = _io.BytesIO()
+    df.to_excel(buf, index=False)
+    return parse_orders_excel(buf.getvalue())
+
 FRESHO_URL = "https://app.fresho.com"
 
 # Force unbuffered stdout so progress shows immediately when running
@@ -85,17 +97,26 @@ def _login_and_get_company(page, email: str, password: str) -> str:
     time.sleep(3)
 
     def _find_company_id() -> str | None:
+        # URL-based path is always safe — try it first.
         m = re.search(r"/companies/([0-9a-f-]{36})", page.url)
         if m:
             return m.group(1)
-        hrefs = page.eval_on_selector_all(
-            'a[href*="/companies/"]',
-            'els => els.map(e => e.getAttribute("href"))',
-        )
-        for href in hrefs:
-            m = re.search(r"/companies/([0-9a-f-]{36})", href or "")
-            if m:
-                return m.group(1)
+        # DOM-based fallback: SPA can be mid-navigation, so retry a few times.
+        for attempt in range(5):
+            try:
+                hrefs = page.eval_on_selector_all(
+                    'a[href*="/companies/"]',
+                    'els => els.map(e => e.getAttribute("href"))',
+                )
+                for href in hrefs:
+                    m = re.search(r"/companies/([0-9a-f-]{36})", href or "")
+                    if m:
+                        return m.group(1)
+                # No matching links yet — wait and try again
+                time.sleep(1)
+            except Exception:  # context destroyed mid-eval; wait + retry
+                time.sleep(1)
+                continue
         return None
 
     company_id = _find_company_id()
@@ -142,10 +163,9 @@ def explore_links(headed: bool = True) -> None:
         # explore run we discovered Operations / Purchases / Sales under
         # /orderanalytics/companies/<id>/). Dump links + screenshot for each.
         pages_to_crawl = [
-            ("sales", f"{FRESHO_URL}/orderanalytics/companies/{company_id}/sales"),
-            ("operations", f"{FRESHO_URL}/orderanalytics/companies/{company_id}/operations"),
-            ("purchases", f"{FRESHO_URL}/orderanalytics/companies/{company_id}/purchases"),
-            ("supplier_sell", f"{FRESHO_URL}/supplier/dashboard?company_id={company_id}&mode=sell"),
+            ("selling_deliveries", f"{FRESHO_URL}/companies/{company_id}/selling/deliveries"),
+            ("supplier_orders", f"{FRESHO_URL}/supplier/orders?company_id={company_id}&mode=sell"),
+            ("supplier_reports", f"{FRESHO_URL}/supplier/reports?company_id={company_id}&mode=sell"),
         ]
 
         for label, url in pages_to_crawl:
@@ -201,6 +221,43 @@ def explore_links(headed: bool = True) -> None:
             except Exception as e:  # noqa: BLE001
                 print(f"[explore] screenshot failed: {e}")
 
+            # Form-structure dump — only really informative on the deliveries
+            # page, but cheap to do everywhere.
+            inputs = page.eval_on_selector_all(
+                "input",
+                "els => els.map(e => ({"
+                "type: e.type, name: e.name, id: e.id, "
+                "placeholder: e.placeholder || '', value: e.value || ''"
+                "}))",
+            )
+            interesting_inputs = [
+                i for i in inputs
+                if i["type"] in ("date", "text", "search") and (i["name"] or i["id"] or i["placeholder"])
+            ]
+            if interesting_inputs:
+                print(f"[explore] {len(interesting_inputs)} form inputs on {label}:")
+                for I in interesting_inputs:
+                    print(
+                        f"  type={I['type']:8s}  name={I['name']!r}  id={I['id']!r}  "
+                        f"placeholder={I['placeholder']!r}  value={I['value']!r}"
+                    )
+
+            selects = page.eval_on_selector_all(
+                "select",
+                "els => els.map(e => ({"
+                "name: e.name, id: e.id, "
+                "options: Array.from(e.options).map(o => ({value: o.value, text: o.text.trim().slice(0,50)}))"
+                "}))",
+            )
+            if selects:
+                print(f"[explore] {len(selects)} <select> elements on {label}:")
+                for S in selects:
+                    print(f"  name={S['name']!r}  id={S['id']!r}")
+                    for o in S["options"][:10]:
+                        print(f"    option value={o['value']!r}  text={o['text']!r}")
+                    if len(S["options"]) > 10:
+                        print(f"    ... +{len(S['options']) - 10} more")
+
         print()
         print("[explore] Browser stays open for 10 minutes.")
         print("[explore] If you spot the delivery_runs export above, paste the URL.")
@@ -211,45 +268,22 @@ def explore_links(headed: bool = True) -> None:
         browser.close()
 
 
-def _try_download(page, tmp_dir: Path) -> Path | None:
-    """Click any plausible download/export button and capture the file."""
-    selectors = [
-        '.test-download-button',
-        'button:has-text("XLSX")',
-        'a:has-text("XLSX")',
-        'button:has-text("Excel")',
-        'button:has-text("Export")',
-        'a:has-text("Export")',
-        'button:has-text("Download")',
-        'a:has-text("Download")',
-        '[data-testid*="export"]',
-        '[data-testid*="download"]',
-        '[title*="Export"]',
-    ]
-    for sel in selectors:
-        try:
-            with page.expect_download(timeout=15000) as dl:
-                page.click(sel, timeout=3000)
-            d = dl.value
-            out = tmp_dir / d.suggested_filename
-            d.save_as(str(out))
-            print(f"  ✓ downloaded ({sel}): {d.suggested_filename}")
-            return out
-        except Exception:
-            continue
-    return None
-
-
 def pull_one_day(target_date: date, headed: bool = False) -> dict:
-    """Log in, navigate to the delivery_runs page for `target_date`, download,
-    parse, push to Supabase via import_orders. Returns the import summary."""
+    """Log in, drive the /selling/deliveries form for `target_date`, capture
+    the downloaded file, parse, push to Supabase via import_orders.
+
+    Form discovery (locked in via --explore on 2026-05-12):
+      page   : /companies/<id>/selling/deliveries
+      date   : <input id="delivery_date" type="date" value="YYYY-MM-DD">
+      format : <select name="format">  options: PDF, CSV
+      run    : <select name="delivery_run_code"> options: '' (All Delivery Runs)
+               + every legacy run code. We leave it as ''
+      button : <button class="col-sm-auto btn btn-primary">Export</button>
+    """
     from playwright.sync_api import sync_playwright
 
     email = os.environ.get("FRESHO_EMAIL") or "will@grasmere-farm.co.uk"
     password = os.environ["FRESHO_PASSWORD"]
-    template = os.environ.get(
-        "FRESHO_DELIVERY_URL_TEMPLATE", DEFAULT_DELIVERY_URL_TEMPLATE
-    )
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
@@ -263,30 +297,50 @@ def pull_one_day(target_date: date, headed: bool = False) -> dict:
             )
             page = ctx.new_page()
             company_id = _login_and_get_company(page, email, password)
-            print(f"[pull] logged in · company_id = {company_id}")
+            print(f"[pull] logged in -> company_id = {company_id}")
 
-            url_path = template.format(company_id=company_id, date=target_date.isoformat())
-            url = FRESHO_URL + (url_path if url_path.startswith("/") else "/" + url_path)
-            print(f"[pull] {target_date} → GET {url}")
+            url = f"{FRESHO_URL}/companies/{company_id}/selling/deliveries"
+            print(f"[pull] {target_date} -> GET {url}")
             page.goto(url, wait_until="domcontentloaded", timeout=20000)
-            time.sleep(4)
+            page.wait_for_selector('#delivery_date', timeout=15000)
+            page.wait_for_selector('select[name="format"]', timeout=10000)
+            time.sleep(1)
 
-            downloaded = _try_download(page, tmp_dir)
-            if not downloaded:
-                shot = tmp_dir / f"failed_{target_date}.png"
-                page.screenshot(path=str(shot), full_page=True)
-                persist = ROOT / "scripts" / shot.name
-                shutil.copy(str(shot), str(persist))
+            iso = target_date.isoformat()
+            print(f"[pull] filling delivery_date = {iso}")
+            page.fill('#delivery_date', iso)
+            page.select_option('select[name="format"]', 'CSV')
+
+            # Single Export button on this page (class .btn-primary)
+            print("[pull] clicking Export...")
+            try:
+                with page.expect_download(timeout=90000) as dl:
+                    page.click('button.btn-primary:has-text("Export")', timeout=10000)
+                download = dl.value
+                fname = download.suggested_filename
+                out = tmp_dir / fname
+                download.save_as(str(out))
+                print(f"[pull] downloaded: {fname}")
+                payload = out.read_bytes()
+                ext = out.suffix.lower()
+            except Exception as e:  # noqa: BLE001
+                shot = ROOT / "scripts" / f"failed_{target_date}.png"
+                try:
+                    page.screenshot(path=str(shot), full_page=True)
+                    print(f"[pull] screenshot saved: {shot}")
+                except Exception:
+                    pass
                 browser.close()
-                raise RuntimeError(
-                    f"No download button found at {url}. Screenshot: {persist}\n"
-                    "Run with --explore to identify the right URL pattern."
-                )
-            payload = downloaded.read_bytes()
+                raise RuntimeError(f"Export failed: {e}")
             browser.close()
 
-    rows, parse_errors = parse_orders_excel(payload)
-    print(f"[pull] parsed {len(rows)} orders · {len(parse_errors)} parse errors")
+    # Parse — Fresho's "CSV" option historically downloads .xlsx (the file
+    # already in the repo from a manual export is .xlsx). Detect by extension.
+    if ext == ".csv":
+        rows, parse_errors = _parse_orders_csv(payload)
+    else:
+        rows, parse_errors = parse_orders_excel(payload)
+    print(f"[pull] parsed {len(rows)} orders ({ext}) · {len(parse_errors)} parse errors")
     if not rows:
         return {"orders_inserted": 0, "orders_updated": 0, "rows_parsed": 0}
     summary = import_orders(rows)
