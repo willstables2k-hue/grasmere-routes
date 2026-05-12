@@ -318,18 +318,20 @@ def pull_one_day(target_date: date, headed: bool = False) -> dict:
             print("[pull] clicking Export...")
             try:
                 page.click('button.btn-primary:has-text("Export")', timeout=10000)
-                print("[pull] giving the modal time to render + report time to generate...")
-                # Don't wait for a specific selector — the modal text might be
-                # in an iframe (Fresho uses Ember/iframe-based modals). Wait
-                # a fixed time, then scan ALL frames for the download link.
-                time.sleep(20)
+                print("[pull] polling for filename link in modal (up to 5 min)...")
 
-                # Search every frame for an element with 'delivery_runs' in its text or href
-                target = None
-                for f_idx, f in enumerate(page.frames):
+                # Modal is a Bootstrap dialog (div[role=dialog]) in the main
+                # frame. Its filename link is rendered after Fresho's server
+                # finishes generating the report. Poll for an anchor whose
+                # text matches the file pattern (with date) — that's unique
+                # and won't false-match the page-level "Manage" link.
+                iso_for_match = target_date.isoformat()
+                target_hit = None
+                for attempt in range(60):
+                    time.sleep(5)
                     try:
-                        diag = f.eval_on_selector_all(
-                            "a, button, [role='link'], [role='button']",
+                        diag = page.eval_on_selector_all(
+                            'div[role="dialog"] a, .modal a, a',
                             "els => els.map(e => ({"
                             "tag: e.tagName, "
                             "text: (e.innerText||'').trim().slice(0,120), "
@@ -339,44 +341,32 @@ def pull_one_day(target_date: date, headed: bool = False) -> dict:
                             "download: e.hasAttribute('download')"
                             "}))",
                         )
-                        hits = [
-                            d for d in diag
-                            if "delivery_runs" in (d["text"] or "") or "delivery_runs" in (d["href"] or "")
-                        ]
-                        if hits:
-                            print(f"[pull] found in frame[{f_idx}] url={f.url}:")
-                            for h in hits[:5]:
-                                print(f"    {h}")
-                            target = (f, hits[0])
-                            break
-                    except Exception as e:  # noqa: BLE001
-                        print(f"[pull] frame[{f_idx}] scan err: {e}")
+                    except Exception:
+                        continue
+                    # Match by TEXT containing the date string — that's only
+                    # in the modal's filename link, never in nav/sidebar links.
+                    hits = [d for d in diag if iso_for_match in (d["text"] or "")]
+                    if hits:
+                        target_hit = hits[0]
+                        print(f"[pull] modal link appeared after ~{(attempt+1)*5}s")
+                        print(f"  {target_hit}")
+                        break
 
-                if not target:
-                    # Last-ditch debug: dump first 2000 chars of each frame's content
-                    print("[pull] DOWNLOAD ELEMENT NOT FOUND. Frame dump:")
-                    for f_idx, f in enumerate(page.frames):
-                        try:
-                            html = f.content()
-                            idx = html.find("delivery_runs")
-                            if idx >= 0:
-                                print(f"  frame[{f_idx}] url={f.url}")
-                                print(f"  context: {html[max(0,idx-200):idx+300]!r}")
-                        except Exception:
-                            pass
-                    raise RuntimeError("download link not located in any frame")
+                if not target_hit:
+                    raise RuntimeError(
+                        f"modal filename link (containing {iso_for_match}) never appeared"
+                    )
 
-                frame, hit = target
-                print(f"[pull] clicking element: tag={hit['tag']} text={hit['text']!r}")
-                # Build a robust frame-scoped locator
-                if hit["href"]:
-                    sel = f'a[href="{hit["href"]}"]'
-                elif hit["id"]:
-                    sel = f'#{hit["id"]}'
+                # Build a robust locator for the hit element
+                if target_hit["href"]:
+                    locator = page.locator(f'a[href="{target_hit["href"]}"]').first
                 else:
-                    sel = f'{hit["tag"].lower()}:has-text("delivery_runs")'
-                with page.expect_download(timeout=30000) as dl:
-                    frame.click(sel, timeout=10000)
+                    locator = page.locator('div[role="dialog"] a').filter(
+                        has_text=iso_for_match
+                    ).first
+                print("[pull] clicking modal link...")
+                with page.expect_download(timeout=60000) as dl:
+                    locator.click(timeout=10000)
                 download = dl.value
                 fname = download.suggested_filename
                 out = tmp_dir / fname
