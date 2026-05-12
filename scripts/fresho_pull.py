@@ -318,33 +318,21 @@ def pull_one_day(target_date: date, headed: bool = False) -> dict:
             print("[pull] clicking Export...")
             try:
                 page.click('button.btn-primary:has-text("Export")', timeout=10000)
-                print("[pull] waiting 30s for modal to render + report to finish...")
-                time.sleep(30)
 
-                # Dump the modal's HTML directly so we can see exactly how the
-                # download link is structured.
-                try:
-                    modal_html = page.locator('div[role="dialog"]').first.inner_html()
-                    print(f"[pull] modal HTML length: {len(modal_html)}")
-                    print(f"[pull] modal HTML (first 2500 chars):")
-                    print(modal_html[:2500])
-                    print("[pull] --- end modal HTML ---")
-                except Exception as e:  # noqa: BLE001
-                    print(f"[pull] couldn't read modal HTML: {e}")
-                    modal_html = ""
+                # Modal body is an iframe pointing at /job_progress/<id>.
+                # Wait for that iframe to mount, then for its content to
+                # finish rendering the download link (Fresho's server may
+                # take up to ~3 min on a busy day).
+                print("[pull] waiting for #modal-iframe to mount...")
+                page.wait_for_selector('iframe#modal-iframe', timeout=30000)
+                iframe = page.frame_locator('iframe#modal-iframe')
 
-                # Look for the .csv link by href pattern, falling back to text
-                import re as _re
-                href_match = _re.search(r'href="([^"]*delivery_runs[^"]*\.csv[^"]*)"', modal_html)
-                if href_match:
-                    csv_href = href_match.group(1).replace("&amp;", "&")
-                    print(f"[pull] found href: {csv_href}")
-                    print("[pull] clicking link by href...")
-                    with page.expect_download(timeout=60000) as dl:
-                        page.locator(f'a[href="{csv_href}"]').first.click(timeout=10000)
-                else:
-                    raise RuntimeError("No href matching *delivery_runs*.csv in modal HTML")
-
+                print("[pull] waiting for download link inside iframe...")
+                link = iframe.locator('a').filter(has_text="delivery_runs").first
+                link.wait_for(state="visible", timeout=240000)
+                print("[pull] link visible — clicking...")
+                with page.expect_download(timeout=60000) as dl:
+                    link.click(timeout=10000)
                 download = dl.value
                 fname = download.suggested_filename
                 out = tmp_dir / fname
